@@ -1,0 +1,27 @@
+---
+title: "tarea1"
+author: "Sofia Valentina Lopez Ramirez"
+date: "2026-09-17"
+output: html_document
+---
+
+st-2026-2-tarea1-herramientas-apellidos-nombres/
+|-- README.md
+|-- .gitignore
+|-- R/
+| |-- 00-lectura.R leer_serie()
+| |-- 01-graficos.R graficar_serie(), correlograma()
+| |-- 02-metodos.R los ocho metodos, uno por funcion
+| |-- 03-evaluacion.R medidas(), ljung_box(), jarque_bera(),
+| | durbin_watson(), validar_errores()
+|-- ejemplos/
+| |-- ejemplos.R carga R/ y ejecuta los ocho ejemplos en orden
+|-- informe/
+| |-- informe.qmd analisis detallado de los ocho ejemplos
+| |-- informe.html el .qmd renderizado (o informe.pdf)
+|-- figs/ se llena al correr ejemplos.R; se versiona
+|-- sesion-info.txt salida de sessionInfo() al cerrar la entrega
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
