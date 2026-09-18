@@ -70,7 +70,7 @@ correlograma <- function(y, m = NULL, ci = 0.95) {
   n <- length(y)
   
   if (is.null(m)) {
-    m <- min(floor(n/4), 24)
+    m <- min(floor(n/4), n/4)
   }
   
   y_barra <- mean(y)
