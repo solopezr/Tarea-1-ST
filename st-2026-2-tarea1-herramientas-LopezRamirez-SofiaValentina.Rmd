@@ -34,7 +34,84 @@ datos <- leer_serie(AirPassengers, fuente = "help(AirPassengers)", unidad = "Pas
 ```
 
 
-| |-- 01-graficos.R graficar_serie(), correlograma()
+```{r, echo=FALSE, warning=FALSE}
+
+# 01-graficos.R
+graficar_serie <- function(datos, titulo) {
+  library(ggplot2)
+  
+  ggplot(datos, aes(x = fecha, y = y)) +
+    geom_line(color = "steelblue", size = 1) +   
+    labs(
+      title = titulo,                            
+      x = "Tiempo",                             
+      y = "Pasajeros"                     
+    ) +
+    theme_minimal() +                            
+    theme(
+      plot.title = element_text(hjust = 0.5, size = 14, face = "bold"),
+      axis.title.x = element_text(size = 12),
+      axis.title.y = element_text(size = 12)
+    )
+}
+
+graficar_serie(datos, titulo = "Serie AirPassengers")
+
+```
+
+
+```{r, echo=FALSE, warning=FALSE}
+# 01-correlogrma.R
+
+correlograma <- function(y, m = NULL, ci = 0.95) {
+  library(ggplot2)
+  library(gridExtra)
+  
+  n <- length(y)
+  
+  if (is.null(m)) {
+    m <- min(floor(n/4), 24)
+  }
+  
+  y_barra <- mean(y)
+  
+  rh <- numeric(m)
+  denominador <- sum((y - y_barra)^2)
+  for (h in 1:m) {
+    numerador <- sum((y[1:(n-h)] - y_barra) * (y[(1+h):n] - y_barra))
+    rh[h] <- numerador / denominador
+  }
+  
+  clim0 <- qnorm((1 + ci)/2) / sqrt(n)
+  
+  pacf_1 <- pacf(y, plot = FALSE, lag.max = m)$acf
+  
+  acf_r <- acf(y, plot = FALSE, lag.max = m)$acf[-1] 
+  max_dif <- max(abs(rh - acf_r))
+  cat("Máxima diferencia absoluta entre ACF manual y acf():", max_dif, "\n")
+  
+  df_acf <- data.frame(lag = 1:m, acf = rh)
+  g1 <- ggplot(df_acf, aes(x = lag, y = acf)) +
+    geom_bar(stat = "identity", fill = "steelblue", width = 0.2) +
+    geom_hline(yintercept = c(-clim0, clim0), linetype = "dashed", color = "red") +
+    labs(title = "ACF muestral", x = "Rezago", y = expression(rho[h])) +
+    theme_minimal()
+  
+  df_pacf <- data.frame(lag = 1:m, pacf = pacf_1)
+  g2 <- ggplot(df_pacf, aes(x = lag, y = pacf)) +
+    geom_bar(stat = "identity", fill = "darkgreen", width = 0.5) +
+    geom_hline(yintercept = c(-clim0, clim0), linetype = "dashed", color = "red") +
+    labs(title = "PACF muestral", x = "Rezago", y = expression(phi[h])) +
+    theme_minimal()
+  
+  gridExtra::grid.arrange(g1, g2, ncol = 1)
+}
+
+y <- as.numeric(AirPassengers)
+correlograma(y)
+```
+
+
 | |-- 02-metodos.R los ocho metodos, uno por funcion
 | |-- 03-evaluacion.R medidas(), ljung_box(), jarque_bera(),
 | | durbin_watson(), validar_errores()
