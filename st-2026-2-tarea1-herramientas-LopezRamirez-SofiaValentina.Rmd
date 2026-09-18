@@ -12,29 +12,25 @@ st-2026-2-tarea1-herramientas-apellidos-nombres/
 
 ```{r, echo=FALSE, warning=FALSE}
 
+# 00-lectura.R
 leer_serie <- function(x, fuente, unidad) {
   if (inherits(x, "ts")) {
-    fechas <- seq.Date(from = as.Date(paste(start(x)[1], start(x)[2], "01", sep="-")),
+    fechas <- seq.Date(from = as.Date(start(x)[1], origin="1970-01-01"),
                        by = paste(frequency(x), "months"),
                        length.out = length(x))
-    
-    datos <- tibble::tibble(
+    tibble::tibble(
       t = seq_along(x),
       fecha = fechas,
       y = as.numeric(x)
-    )
-    attr(datos, "frecuencia") <- frequency(x)
-    attr(datos, "fuente") <- fuente
-    attr(datos, "unidad") <- unidad
-    
-    return(datos)
+    ) |> 
+      dplyr::mutate(fuente = fuente, unidad = unidad, frecuencia = frequency(x))
   } else {
     stop("objetos ts")
   }
 }
 
 datos <- leer_serie(AirPassengers, fuente = "help(AirPassengers)", unidad = "Pasajeros")
-head(datos)
+
 ```
 
 
