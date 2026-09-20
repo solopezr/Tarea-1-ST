@@ -223,10 +223,110 @@ ajustar_ses <- function(y, alpha) {
 }
 ```
 
+```{r, echo=FALSE}
 
+y <- as.numeric(AirPassengers)
 
-| |-- 03-evaluacion.R medidas(), ljung_box(), jarque_bera(),
-| | durbin_watson(), validar_errores()
+ajustar_mm(y, 3)
+```
+
+```{r, echo=FALSE}
+
+# Tendencia por mínimos cuadrados
+
+ajustar_tendencia <- function(y, tipo = "lineal", corregir_sesgo = FALSE) {
+  T <- length(y)
+  t <- 1:T
+  
+  if (tipo == "lineal") {
+    X <- cbind(1, t)
+  } else if (tipo == "cuadratica") {
+    X <- cbind(1, t, t^2)
+  } else if (tipo == "exponencial") {
+    if (any(y <= 0)) stop("Serie con valores no positivos, no se puede log-transformar")
+    y <- log(y)
+    X <- cbind(1, t)
+  }
+  
+  beta_hat <- solve(crossprod(X), crossprod(X, y))
+  yhat <- X %*% beta_hat
+  
+  if (tipo == "exponencial") {
+    yhat <- exp(yhat)
+    if (corregir_sesgo) {
+      sigma2 <- var(y - X %*% beta_hat)
+      yhat <- yhat * exp(sigma2/2)
+    }
+  }
+  
+  list(parametros = beta_hat, yhat = yhat)
+}
+```
+
+```{r, echo=FALSE}
+y <- as.numeric(AirPassengers)
+
+ajustar_tendencia(y, "exponencial")
+
+```
+
+```{r, echo=FALSE}
+
+# Holt
+
+ajustar_holt <- function(y, alpha, beta) {
+  T <- length(y)
+  L <- numeric(T); Tt <- numeric(T)
+  L[1] <- y[1]; Tt[1] <- 0
+  
+  for (t in 2:T) {
+    e <- y[t] - (L[t-1] + Tt[t-1])
+    L[t] <- L[t-1] + Tt[t-1] + alpha * e
+    Tt[t] <- Tt[t-1] + alpha * beta * e
+  }
+  
+  list(L = L, Tt = Tt, yhat = L[T] + Tt[T]*(1:T))
+}
+
+```
+
+```{r, echo=FALSE}
+
+optimizar <- function(y, metodo, rejilla) {
+  resultados <- data.frame()
+  
+  for (param in rejilla) {
+    if (metodo == "mm") {
+      ajuste <- ajustar_mm(y, param)
+      mse <- mean((y - ajuste$trayectoria)^2, na.rm = TRUE)
+      resultados <- rbind(resultados, data.frame(param = param, mse = mse))
+    }
+    if (metodo == "ses") {
+      ajuste <- ajustar_ses(y, param)
+      mse <- mean((y - ajuste$yhat)^2, na.rm = TRUE)
+      resultados <- rbind(resultados, data.frame(param = param, mse = mse))
+    }
+    # Holt: rejilla de pares (alpha, beta)
+    if (metodo == "holt") {
+      ajuste <- ajustar_holt(y, param[1], param[2])
+      mse <- mean((y - ajuste$yhat)^2, na.rm = TRUE)
+      resultados <- rbind(resultados, data.frame(alpha = param[1], beta = param[2], mse = mse))
+    }
+  }
+  
+  optimo <- resultados[which.min(resultados$mse), ]
+  list(resultados = resultados, optimo = optimo)
+}
+```
+
+```{r, echo=FALSE}
+
+y <- as.numeric(AirPassengers)
+
+optimizar(y,metodo = "mm", 123)
+
+```
+
 |-- ejemplos/
 | |-- ejemplos.R carga R/ y ejecuta los ocho ejemplos en orden
 |-- informe/
