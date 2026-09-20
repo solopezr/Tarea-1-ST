@@ -70,7 +70,7 @@ correlograma <- function(y, m = NULL, ci = 0.95) {
   n <- length(y)
   
   if (is.null(m)) {
-    m <- min(floor(n/4), n/4)
+    m <- min(floor(n/4), 24)
   }
   
   y_barra <- mean(y)
@@ -111,8 +111,120 @@ y <- as.numeric(AirPassengers)
 correlograma(y)
 ```
 
+```{r, echo=FALSE}
 
-| |-- 02-metodos.R los ocho metodos, uno por funcion
+# 03-evaluacion.R medidas(),ljung_box(), jarque_bera(),durbin_watson()
+
+ljung_box <- function(r, T, m, p = 0, ci = 0.95) {
+  
+  Qm <- T * (T + 2) * sum((r[1:m]^2) / (T - (1:m)))
+
+  df <- m - p
+  
+  crit <- qchisq(ci, df)
+
+  pval <- 1 - pchisq(Qm, df)
+  
+  return(list(Qm = Qm, df = df, crit = crit, pval = pval))
+}
+
+jarque_bera <- function(e, ci = 0.95) {
+  N <- length(e)
+  A <- mean(((e - mean(e)) / sd(e))^3)
+  K <- mean(((e - mean(e)) / sd(e))^4) 
+  
+  JB <- N/6 * (A^2 + (K - 3)^2 / 4)
+  df <- 2
+  crit <- qchisq(ci, df)
+  pval <- 1 - pchisq(JB, df)
+  
+  return(list(JB = JB, df = df, crit = crit, pval = pval))
+}
+
+durbin_watson <- function(e) {
+  numerador1 <- sum((e[-1] - e[-length(e)])^2)
+  denominador1 <- sum(e^2)
+  d <- numerador1 / denominador1
+  
+  return(list(DW = d))
+}
+```
+
+```{r, echo=FALSE}
+
+# validar_errores()
+
+data(AirPassengers)
+y <- as.numeric(AirPassengers)
+T <- length(y)
+m <- min(floor(T/4), 24)
+
+acf_vals <- acf(y, plot = FALSE, lag.max = m)$acf[-1]
+
+res_ljung <- ljung_box(acf_vals, T, m, p = 0)
+
+res_box <- Box.test(y, lag = m, type = "Ljung-Box")
+
+cat("Qm manual:", res_ljung$Qm, "\n")
+cat("Qm Box.test:", res_box$statistic, "\n")
+cat("Diferencia absoluta:", abs(res_ljung$Qm - res_box$statistic), "\n")
+```
+```{r, echo=FALSE}
+# 02-metodos.R los ocho metodos, uno por funcion
+
+# Media simple
+ajustar_media <- function(y) {
+  T <- length(y)
+  ybar <- numeric(T)
+  ybar[1] <- y[1]
+  for (t in 2:T) {
+    ybar[t] <- ybar[t-1] + (y[t] - ybar[t-1]) / t
+  }
+  list(yhat = rep(ybar[T], T), trayectoria = ybar)
+}
+
+# Media móvil
+ajustar_mm <- function(y, k) {
+  T <- length(y)
+  mm <- rep(NA, T)
+  mm[k] <- mean(y[1:k])
+  for (t in (k+1):T) {
+    mm[t] <- mm[t-1] + (y[t] - y[t-k]) / k
+  }
+  list(yhat = rep(mm[T], T), trayectoria = mm)
+}
+
+# Doble media móvil
+ajustar_dmm <- function(y, k) {
+  mm1 <- ajustar_mm(y, k)$trayectoria
+  mm2 <- ajustar_mm(na.omit(mm1), k)$trayectoria
+  # Trayectorias E_t y beta1(t)
+  Ehat <- mm2
+  beta1 <- (mm1[(2*k):length(mm1)] - mm2) / k
+  list(yhat = Ehat + beta1 * (1:length(Ehat)), Ehat = Ehat, beta1 = beta1)
+}
+
+# Suavizamiento exponencial simple
+ajustar_ses <- function(y, alpha) {
+  T <- length(y)
+  yhat <- numeric(T)
+  yhat[1] <- y[1]
+  for (t in 2:T) {
+    e <- y[t-1] - yhat[t-1]
+    yhat[t] <- yhat[t-1] + alpha * e
+  }
+  # Verificacion: coincide con promedio ponderado
+  suma <- sapply(2:T, function(t) {
+    i <- 0:(t-2)
+    alpha * sum((1-alpha)^i * y[t-1-i]) + (1-alpha)^(t-1) * y[1]
+  })
+  cat("Máx diferencia SES vs ponderado:", max(abs(yhat[2:T] - suma)), "\n")
+  list(yhat = yhat)
+}
+```
+
+
+
 | |-- 03-evaluacion.R medidas(), ljung_box(), jarque_bera(),
 | | durbin_watson(), validar_errores()
 |-- ejemplos/
