@@ -1,15 +1,49 @@
 ---
-title: "tarea1"
-author: "Sofia Valentina Lopez Ramirez"
-date: "2026-09-17"
-output: html_document
+output:
+  pdf_document: default
+  html_document: default
 ---
+\begin{titlepage}
 
-st-2026-2-tarea1-herramientas-apellidos-nombres/
-|-- README.md
-|-- .gitignore
-|-- R/
+\centering
 
+\vspace*{2cm}
+
+{\Huge \textbf{Tarea 1}\par}
+\vspace{0.5cm}
+{\Huge \textbf{Series de Tiempo}\par}
+
+\vspace{2.5cm}
+
+{\Large \textbf{Estudiante}\par}
+\vspace{0.3cm}
+{\large Sofía Valentina López Ramírez\par}
+
+\vspace{1.5cm}
+
+{\Large \textbf{Profesor}\par}
+\vspace{0.3cm}
+{\large Juan Pablo Valencia Arango\par}
+
+\vfill
+
+{\Large \textbf{UNIVERSIDAD NACIONAL DE COLOMBIA}\par}
+\vspace{0.5cm}
+{\large \textbf{Sede Medellín}\par}
+
+\vspace{2.5cm}
+
+{\large \today\par}
+
+\end{titlepage}
+
+\newpage
+
+\tableofcontents
+
+\newpage
+
+\newpage
 ```{r, echo=FALSE, warning=FALSE}
 
 # 00-lectura.R
@@ -37,15 +71,15 @@ datos <- leer_serie(AirPassengers, fuente = "help(AirPassengers)", unidad = "Pas
 ```{r, echo=FALSE, warning=FALSE}
 
 # 01-graficos.R
-graficar_serie <- function(datos, titulo) {
+graficar_serie <- function(datos, titulo, eje_x, eje_y) {
   library(ggplot2)
   
   ggplot(datos, aes(x = fecha, y = y)) +
     geom_line(color = "steelblue", size = 1) +   
     labs(
       title = titulo,                            
-      x = "Tiempo",                             
-      y = "Pasajeros"                     
+      x = eje_x,                             
+      y = eje_y                     
     ) +
     theme_minimal() +                            
     theme(
@@ -55,7 +89,6 @@ graficar_serie <- function(datos, titulo) {
     )
 }
 
-graficar_serie(datos, titulo = "Serie AirPassengers")
 
 ```
 
@@ -107,8 +140,6 @@ correlograma <- function(y, m = NULL, ci = 0.95) {
   gridExtra::grid.arrange(g1, g2, ncol = 1)
 }
 
-y <- as.numeric(AirPassengers)
-correlograma(y)
 ```
 
 ```{r, echo=FALSE}
@@ -148,27 +179,33 @@ durbin_watson <- function(e) {
   
   return(list(DW = d))
 }
+
+validar_errores <- function(errores, p = 0, m = 24) {
+  n <- length(errores)
+  cat("Número de errores:", n, "\n")
+  
+  ts.plot(errores, col="blue", lwd=2, main="Errores en el tiempo")
+  abline(h=0, col="red", lty=2)
+  
+  acf(errores, main="Correlograma de errores")
+  
+  t_res <- t.test(errores, mu=0)
+  print(t_res)
+  
+  acf_err <- acf(errores, plot=FALSE, lag.max=m)$acf[-1]
+  lb <- ljung_box(acf_err, n, m, p)
+  print(lb)
+  
+  jb <- jarque_bera(errores)
+  if (n < 20) cat("Advertencia: JB es asintótica, menos de 20 errores.\n")
+  print(jb)
+  
+  dw <- durbin_watson(errores)
+  print(dw)
+}
 ```
 
-```{r, echo=FALSE}
 
-# validar_errores()
-
-data(AirPassengers)
-y <- as.numeric(AirPassengers)
-T <- length(y)
-m <- min(floor(T/4), 24)
-
-acf_vals <- acf(y, plot = FALSE, lag.max = m)$acf[-1]
-
-res_ljung <- ljung_box(acf_vals, T, m, p = 0)
-
-res_box <- Box.test(y, lag = m, type = "Ljung-Box")
-
-cat("Qm manual:", res_ljung$Qm, "\n")
-cat("Qm Box.test:", res_box$statistic, "\n")
-cat("Diferencia absoluta:", abs(res_ljung$Qm - res_box$statistic), "\n")
-```
 ```{r, echo=FALSE}
 # 02-metodos.R los ocho metodos, uno por funcion
 
@@ -213,6 +250,7 @@ ajustar_ses <- function(y, alpha) {
     e <- y[t-1] - yhat[t-1]
     yhat[t] <- yhat[t-1] + alpha * e
   }
+  
   # Verificacion: coincide con promedio ponderado
   suma <- sapply(2:T, function(t) {
     i <- 0:(t-2)
@@ -223,12 +261,6 @@ ajustar_ses <- function(y, alpha) {
 }
 ```
 
-```{r, echo=FALSE}
-
-y <- as.numeric(AirPassengers)
-
-ajustar_mm(y, 3)
-```
 
 ```{r, echo=FALSE}
 
@@ -263,12 +295,6 @@ ajustar_tendencia <- function(y, tipo = "lineal", corregir_sesgo = FALSE) {
 }
 ```
 
-```{r, echo=FALSE}
-y <- as.numeric(AirPassengers)
-
-ajustar_tendencia(y, "exponencial")
-
-```
 
 ```{r, echo=FALSE}
 
@@ -319,20 +345,193 @@ optimizar <- function(y, metodo, rejilla) {
 }
 ```
 
+
+# Ejemplos
+
+## 1) Media Simple
+
+```{r, echo=FALSE, warning=FALSE, message=FALSE}
+# media simple nottem
+
+data("nottem")
+y <- as.numeric(nottem)
+T <- length(y)
+
+graficar_serie(leer_serie(nottem, fuente = "help(nottem)", unidad = "temperatura"),
+               titulo= "Temperatura en Nottingham", eje_x = "Año", eje_y = "Grados Fahrenheit")
+
+correlograma(y)
+
+acf_vals <- acf(y, plot=FALSE, lag.max=24)$acf[-1]
+resultado_lb <- ljung_box(r = acf_vals, T = T, m = 24, p = 0)
+
+
+
+
+```
+## 2) Media Movil
 ```{r, echo=FALSE}
+# media movil lynx
+data("lynx")
+y <- as.numeric(lynx)
+T <- length(y)
 
-y <- as.numeric(AirPassengers)
+graficar_serie(leer_serie(lynx, fuente = "help(lynx)", unidad = "Miles de pieles"),
+               titulo= "Capturas anuales de linces canadienses ", eje_x = "Año", eje_y = "Miles de pieles de lince")
 
-optimizar(y,metodo = "mm", 123)
+correlograma(y)
+acf_vals <- acf(y, plot=FALSE, lag.max=24)$acf[-1] 
+ljung_box(r=acf_vals, T, m=12)
+
+h <- min(12, floor(0.2 * T))
+y_est <- y[1:(T - h)]
+y_val <- y[(T - h + 1):T]
+
+length(y_est); length(y_val)
+
 
 ```
 
-|-- ejemplos/
-| |-- ejemplos.R carga R/ y ejecuta los ocho ejemplos en orden
-|-- informe/
-| |-- informe.qmd analisis detallado de los ocho ejemplos
-| |-- informe.html el .qmd renderizado (o informe.pdf)
-|-- figs/ se llena al correr ejemplos.R; se versiona
-|-- sesion-info.txt salida de sessionInfo() al cerrar la entrega
+
+## 3) Suavizamiento Exponencial
+
+```{r, echo=FALSE}
+# suavizamiento exponencial
+
+data("sunspot.year")
+y <- as.numeric(sunspot.year)
+T <- length(y)
+
+graficar_serie(leer_serie(sunspot.year, fuente = "help(sunspot.year)", unidad = "manchas solares"),
+               titulo= "Número anual de manchas solares observadas", eje_x = "Año", eje_y = "Número de manchas solares")
+
+correlograma(y)
+acf_vals <- acf(y, plot=FALSE, lag.max=24)$acf[-1] 
+ljung_box(r=acf_vals, T, m=12)
+
+h <- min(12, floor(0.2 * T))
+y_est <- y[1:(T - h)]
+y_val <- y[(T - h + 1):T]
+
+length(y_est); length(y_val)
+```
+
+## 4) Doble Media Movil
+
+```{r, echo=FALSE}
+# doble media movil Nile
+data("Nile")
+y <- as.numeric(Nile)
+T <- length(y)
+
+graficar_serie(leer_serie(Nile, fuente = "help(Nile)", unidad = "caudal"),
+               titulo= "Caudal anual del río Nilo ", eje_x = "Año", eje_y = "Caudal del río Nilo")
+
+correlograma(y)
+acf_vals <- acf(y, plot=FALSE, lag.max=24)$acf[-1] 
+ljung_box(r=acf_vals, T, m=12)
+
+h <- min(12, floor(0.2 * T))
+y_est <- y[1:(T - h)]
+y_val <- y[(T - h + 1):T]
+
+length(y_est); length(y_val)
+
+```
+
+## 5) Tendencia Lineal
+
+```{r, echo=FALSE}
+# tendencia lineal co2
+
+data("co2")
+y <- as.numeric(co2)
+T <- length(y)
+
+graficar_serie(leer_serie(co2, fuente = "help(co2)", unidad = "ppm"),
+               titulo= "Concentración mensual de CO2 en Mauna Loa", eje_x = "Año", eje_y = "CO2 (ppm)")
+
+correlograma(y)
+acf_vals <- acf(y, plot=FALSE, lag.max=24)$acf[-1] 
+ljung_box(r=acf_vals, T, m=12)
+
+h <- min(12, floor(0.2 * T))
+y_est <- y[1:(T - h)]
+y_val <- y[(T - h + 1):T]
+
+length(y_est); length(y_val)
+
+```
+
+## 6) Tendencia Cuadratica
+
+```{r, echo=FALSE}
+# tendencia cuadratica airmiles
+data("airmiles")
+y <- as.numeric(airmiles)
+T <- length(y)
+
+graficar_serie(leer_serie(airmiles, fuente = "help(airmiles)", unidad = "millas"),
+               titulo= "Número de millas aéreas recorridas por pasajeros en EE.UU.", eje_x = "Año", eje_y = "Millones de millas de pasajeros")
+
+correlograma(y)
+acf_vals <- acf(y, plot=FALSE, lag.max=24)$acf[-1] 
+ljung_box(r=acf_vals, T, m=12)
+
+h <- min(12, floor(0.2 * T))
+y_est <- y[1:(T - h)]
+y_val <- y[(T - h + 1):T]
+
+length(y_est); length(y_val)
+
+```
+
+## 7) Tendencia Exponencial
+
+```{r, echo=FALSE}
+# tendencia exponencial
+data("JohnsonJohnson")
+y <- as.numeric(JohnsonJohnson)
+T <- length(y)
+
+graficar_serie(leer_serie(JohnsonJohnson, fuente = "help(JohnsonJohnson)", unidad = "USD"),titulo= "ganancias por acción de Johnson & Johnson", eje_x = "Año", eje_y = "Ganancias por acción (USD)")
+
+correlograma(y)
+acf_vals <- acf(y, plot=FALSE, lag.max=24)$acf[-1] 
+ljung_box(r=acf_vals, T, m=12)
+
+h <- min(12, floor(0.2 * T))
+y_est <- y[1:(T - h)]
+y_val <- y[(T - h + 1):T]
+
+length(y_est); length(y_val)
+
+```
+
+## 8) Holt
+
+```{r, echo=FALSE}
+# holt
+data("AirPassengers")
+y <- as.numeric(AirPassengers)
+T <- length(y)
+
+graficar_serie(leer_serie(AirPassengers, fuente = "help(AirPassengers)", unidad = "miles de pasajeros"),
+               titulo= "número de pasajeros de aerolíneas internacionales", eje_x = "Año", eje_y = "Miles de pasajeros")
+
+correlograma(y)
+acf_vals <- acf(y, plot=FALSE, lag.max=24)$acf[-1] 
+ljung_box(r=acf_vals, T, m=12)
+
+h <- min(12, floor(0.2 * T))
+y_est <- y[1:(T - h)]
+y_val <- y[(T - h + 1):T]
+
+length(y_est); length(y_val)
+
+
+```
+
+
 
 
